@@ -1,6 +1,7 @@
 void subscribeChannels() {
   client.subscribe(check_connection_rec);
   client.subscribe(SirenTopic_listn);
+  client.subscribe(SirenTopic_send);
 
   client.subscribe(nodeStateSetManual_Listn);
   client.subscribe(nodeStateSetManual_sta);
@@ -9,6 +10,9 @@ void subscribeChannels() {
   client.subscribe(nodeSystemState_listn);
   client.subscribe(nodeSystemState_send);
   client.subscribe(debug_mode_listn);
+  client.subscribe(debug_mode_sta);
+  
+  
   //client.subscribe();
 
 }
