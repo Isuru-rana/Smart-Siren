@@ -1,4 +1,4 @@
-/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.0 ========================
+/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.1 ========================
 This code is developed for a node device in a home automation system that runs on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
@@ -37,7 +37,11 @@ v.2.2.0 - 2023/10/03 - feature added:
     Manual Node off state
     In this feature, the user can manually turn off the siren to stop automatic
     independent mode change. This gives the user maintenance time for the MQTT broker
-    while the device is in the deactivated mode.
+    while the device is in deactivated mode.
+
+v.2.2.1 - 2023/10/06 - debug/feature added: 
+    Added EEPROM to store configs and debug mode details.
+    Added debug mode to limit unwanted MQTT messages.
 */
 
 
@@ -45,6 +49,12 @@ v.2.2.0 - 2023/10/03 - feature added:
 #include <PubSubClient.h>
 #include <RCSwitch.h>
 #include <Ticker.h>
+#include <EEPROM.h>
+
+#define System_state_First_boot_Address 0
+#define System_state_Address 1
+#define debug_mode_Address 2
+#define System_delay_Address 3
 
 #define siren 1
 const int PIR = 0;
@@ -53,27 +63,33 @@ const int PIR = 0;
 
 #define SirenTopic_send "sta/floor3/LR/node/siren"
 #define SirenTopic_listn "cmd/floor3/LR/node/siren"
+
 #define motionDetect_send "sta/floor3/LR/node/PIR"
-#define RFRecivedData_send "sta/floor3/LR/node/RF"
+
+#define RFRecivedData_send "data/floor3/LR/node/RF"
 
 #define nodeStateSetManual_Listn "set/floor3/LR/node/mode"
-#define nodeStateSetSuccess_send "set_ok/floor3/LR/node/mode"
+//#define nodeStateSetSuccess_send "set_ok/floor3/LR/node/mode"
 #define nodeStateSetManual_sta "sta/floor3/LR/node/mode"
 
 #define nodeOntimeConfig_listn "config/floor3/LR/node/delay"
-#define nodeOntimeConfigSuccess_send "config_ok/floor3/LR/node/delay"
+//#define nodeOntimeConfigSuccess_send "config_ok/floor3/LR/node/delay"
 #define nodeOntimeConfig_sta "sta/floor3/LR/node/delay"
 
 #define nodeSystemState_listn "cmd/floor3/LR/node/system"
-#define nodeSystemStateSuccess_send "cmd_ok/floor3/LR/node/system"
+//#define nodeSystemStateSuccess_send "cmd_ok/floor3/LR/node/system"
 #define nodeSystemState_send "sta/floor3/LR/node/system"
 
 #define check_connection_send "sta/floor3/LR/node/cnt"
 #define check_connection_rec "sta/HA/sta"
 #define check_connection_rec_payload "online"
 
+#define debug_mode_listn "cmd/floor3/LR/node/debug"
+#define debug_mode_sta "sta/floor3/LR/node/debug"
+
 #define ST_CONNECT_WiFi 100
 #define ST_CONNECT_MQTT 200
+
 int Siren_on_time_in_sec = 600;  //10 mins = 600 [value is in secs.]
 
 const char* ssid = "Home WiFi Network";
@@ -93,6 +109,8 @@ bool flag1 = false;  //added this bool to stop execuding "noResponse()" function
 
 const int timeoutT = 5;  //after sending status msg, timeout timer to recive HA state 5 == 5sec
 
+//bool debug_mode = false;
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 RCSwitch rfReciver = RCSwitch();
@@ -104,6 +122,26 @@ Ticker Timer3;  // Timer to check status msg recived
 void ICACHE_RAM_ATTR motionDetect();  // Used to pre determine the motion detect variable for hardwear interrupt
 
 void setup() {
+
+  EEPROM.begin(9);
+
+  // get value for the state of the system from EEPROM and store it in system state bool
+  if (EEPROM.read(System_state_First_boot_Address) == 1) {  // Check if this is the first boot
+    node_system_state = EEPROM.read(System_state_Address);  // If this is first boot
+    EEPROM.get(System_delay_Address,Siren_on_time_in_sec);
+    //debug_mode = EEPROM.read(debug_mode_Address);
+  } else {
+    EEPROM.write(System_state_Address, 1);
+    EEPROM.commit();
+    EEPROM.write(System_state_First_boot_Address, 1);  //setting unit as not the first boot
+    EEPROM.commit();
+    EEPROM.write(debug_mode_Address, 0);
+    EEPROM.commit();
+    EEPROM.put(System_delay_Address, 600); // default delay set to 10 mins(600 sec)
+    EEPROM.commit();
+    Siren_on_time_in_sec = EEPROM.read(System_delay_Address);
+    node_system_state = EEPROM.read(System_state_Address);
+  }
 
   //Serial.begin(115200);
   pinMode(siren, OUTPUT);
@@ -138,16 +176,19 @@ void setup() {
   //Serial.println("Connected to MQTT server");
   subscribeChannels();
 
-
-  client.publish("testing code", "passed Setup");
+  if (EEPROM.read(debug_mode_Address)) {
+    client.publish("testing code", "passed Setup");
+  }
 }
 
 bool temp1 = false;
 
 void loop() {
   if (!temp1) {
-    client.publish("testing code", "Loop started");
-    temp1 = true;
+    if (EEPROM.read(debug_mode_Address)) {
+      client.publish("testing code", "Loop started");
+      temp1 = true;
+    }
   }
 
   if (WiFi.status() != WL_CONNECTED || !client.connected()) {

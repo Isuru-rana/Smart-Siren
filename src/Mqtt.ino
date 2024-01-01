@@ -17,8 +17,20 @@ void callBack(char* topic, byte* payload, unsigned int length) {
 
       if (node_state) {  // set node state to HA mode again if on Indipendent mode
         node_state = false;
-        client.publish("testing code", "response recived. turning off indipendent mode");
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "response recived. turning off indipendent mode");
+        }
       }
+    }
+  } else if (topicStr.equals(debug_mode_listn)) {
+    if (payloadStr.equals("Turn ON")) {
+      EEPROM.write(debug_mode_Address, 1);
+      EEPROM.commit();
+      client.publish(debug_mode_sta, "Debug mode is TURN ON");
+    } else if (payloadStr.equals("Turn OFF")) {
+      EEPROM.write(debug_mode_Address, 0);
+      EEPROM.commit();
+      client.publish(debug_mode_sta, "Debug mode is TURN OFF");
     }
   }
 
@@ -28,29 +40,32 @@ void callBack(char* topic, byte* payload, unsigned int length) {
       SirenON_OFF = true;
       Timer2.attach(Siren_on_time_in_sec, sirenOfftime);
 
-
-      client.publish("testing code", "Siren Turn On with manual mqtt");
+      if (EEPROM.read(debug_mode_Address)) {
+        client.publish("testing code", "Siren Turn On with manual mqtt");
+      }
 
     } else if (payloadStr.equals("Off")) {
       digitalWrite(siren, LOW);
       SirenON_OFF = false;
       Timer2.detach();
-      client.publish("testing code", "Siren Turn Off with manual mqtt");
+      if (EEPROM.read(debug_mode_Address)) {
+        client.publish("testing code", "Siren Turn Off with manual mqtt");
+      }
     }
   }
 
-  else if (topicStr.equals(nodeStateSetManual_Listn)) { //set/floor3/LR/node/mode
-    if (payloadStr.equals("on")) {
+  else if (topicStr.equals(nodeStateSetManual_Listn)) {  //  set/floor3/LR/node/mode
+    if (payloadStr.equals("On")) {
       node_state = true;
-      client.publish(nodeStateSetSuccess_send, "INDIPENDENT, ON");
-    } else if (payloadStr.equals("off")) {
+      client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
+    } else if (payloadStr.equals("Off")) {
       node_state = false;
-      client.publish(nodeStateSetSuccess_send, "INDIPENDENT, OFF");
+      client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
     }
   }
 
-  else if (topicStr.equals(nodeStateSetManual_sta)) { //
-    if (payloadStr.equals("???")) {
+  else if (topicStr.equals(nodeStateSetManual_sta)) {  //
+    if (payloadStr.equals("????")) {
       if (node_state == true) {
         client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
       } else if (node_state == false) {
@@ -65,42 +80,52 @@ void callBack(char* topic, byte* payload, unsigned int length) {
 
     int buffer = valStr.toInt();
 
-    if (buffer < 10 && buffer > 3600) {
+    if (buffer > 10 && buffer < 3600) {
       Siren_on_time_in_sec = valStr.toInt();
+      EEPROM.put(System_delay_Address, Siren_on_time_in_sec);
+      EEPROM.commit();
       String tempPayLoad = "delay Set successful! new delay: ";
       tempPayLoad += String(Siren_on_time_in_sec);
-      client.publish(nodeOntimeConfigSuccess_send, tempPayLoad.c_str());
+      client.publish(nodeOntimeConfig_sta, tempPayLoad.c_str());
     } else {
-      client.publish(nodeOntimeConfigSuccess_send, "Invalid Input, Min: 10 (10s), max: 3600 (1h)");
+      client.publish(nodeOntimeConfig_sta, "Invalid Input, Min: 10 (10s), max: 3600 (1h)");
     }
   }
 
-  else if (topicStr.equals(nodeOntimeConfig_sta)) { // sta/floor3/LR/node/delay
-    if (payloadStr.equals("???")) {
+  else if (topicStr.equals(nodeOntimeConfig_sta)) {  // sta/floor3/LR/node/delay
+    if (payloadStr.equals("????")) {
       String tempPayLoad = "Delay, ";
       tempPayLoad += String(Siren_on_time_in_sec);
       client.publish(nodeOntimeConfig_sta, tempPayLoad.c_str());
     }
   }
 
-  else if (topicStr.equals(nodeSystemState_listn)) { // cmd/floor3/LR/node/system
+  else if (topicStr.equals(nodeSystemState_listn)) {  // cmd/floor3/LR/node/system
     if (payloadStr.equals("Turn OFF")) {
       node_system_state = false;
-      client.publish(nodeSystemStateSuccess_send, "System turn off success!");
-    } else if (payloadStr.equals("Turn ON") && node_system_state == false) {
+      EEPROM.write(System_state_Address, 0);
+      EEPROM.commit();
+      client.publish(nodeSystemState_send, "System turn off success!");
+    }
+
+    else if (payloadStr.equals("Turn ON") && node_system_state == false) {
       node_system_state = true;
-      client.publish(nodeSystemStateSuccess_send, "System turn on success!");
-    } else if (payloadStr.equals("Turn ON") && node_system_state == true) {
-      client.publish(nodeSystemStateSuccess_send, "System is in On state already!");
+      EEPROM.write(System_state_Address, 1);
+      EEPROM.commit();
+      client.publish(nodeSystemState_send, "System turn on success!");
+    }
+
+    else if (payloadStr.equals("Turn ON") && node_system_state == true) {
+      client.publish(nodeSystemState_send, "System is in On state already!");
     }
   }
 
-  else if (topicStr.equals(nodeSystemState_send)) { // sta/floor3/LR/node/system
-    if (payloadStr.equals("???")) {
+  else if (topicStr.equals(nodeSystemState_send)) {  // sta/floor3/LR/node/system
+    if (payloadStr.equals("????")) {
       if (node_system_state == false) {
-        client.publish(nodeSystemState_send, "System in turn off state");
+        client.publish(nodeSystemState_send, "System in TURN OFF state");
       } else if (node_system_state == true) {
-        client.publish(nodeSystemState_send, "System in turn on state");
+        client.publish(nodeSystemState_send, "System in TURN ON state");
       }
     }
   }

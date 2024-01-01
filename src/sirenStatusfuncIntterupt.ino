@@ -1,10 +1,13 @@
 void nodeStatusfunc() {
   if (flag1 == false) {  // this flag is used to stop executing "no response" in rutine at the code starts
     flag1 = true;
-    client.publish("testing code", "flag1 turn on");
+    if (EEPROM.read(debug_mode_Address)) {
+      client.publish("testing code", "flag1 turn on");
+    }
   }
-
-  client.publish("testing code", "Timer1 interrupt for check statues happend");
+  if (EEPROM.read(debug_mode_Address)) {
+    client.publish("testing code", "Timer1 interrupt for check statues happend");
+  }
   client.publish(check_connection_send, "1");
 
   // after sending status check signal, it will reset recive timer to check recive message in time

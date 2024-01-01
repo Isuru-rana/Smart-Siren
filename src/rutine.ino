@@ -3,8 +3,9 @@ void rutine() {
 }
 
 void sirenOfftime() {
-
-  client.publish("testing code", "Siren On time exeeded.came to siren off function");
+  if (EEPROM.read(debug_mode_Address)) {
+    client.publish("testing code", "Siren On time exeeded.came to siren off function");
+  }
 
   digitalWrite(siren, LOW);
   SirenON_OFF = false;
@@ -23,11 +24,14 @@ void notRespond() {
     //statusTimer = 0;
     //statusTimer = millis();
     client.subscribe(check_connection_rec);
-    client.publish("testing code", "Timer3 respose time exeded. indipendent mode ON");
+    if (EEPROM.read(debug_mode_Address)) {
+      client.publish("testing code", "Timer3 respose time exeded. indipendent mode ON");
+    }
     Timer3.detach();
-  }
-  else if (node_system_state == false){
+  } else if (node_system_state == false) {
     Timer3.detach();
-    client.publish("testing code", "system is in deactive mode: timer resets");
+    if (EEPROM.read(debug_mode_Address)) {
+      client.publish("testing code", "system is in deactive mode: timer resets");
+    }
   }
 }

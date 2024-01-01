@@ -9,6 +9,7 @@ void subscribeChannels() {
   client.subscribe(nodeOntimeConfig_sta);
   client.subscribe(nodeSystemState_listn);
   client.subscribe(nodeSystemState_send);
+  client.subscribe(debug_mode_listn);
   //client.subscribe();
 
 }
