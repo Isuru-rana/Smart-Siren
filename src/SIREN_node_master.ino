@@ -1,27 +1,33 @@
-/* ========= Siren + PIR + MQTT Node ESP01S Stable v.1 =========
+/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2 =========
 This code is developed for a node device for a home automation system that runs on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
 
 In "Slave Mode," the node works as an MQTT client and sends PIR sensor values to the MQTT broker.
-The Siren remains in sleep mode until the broker sends a message to control the siren.
+The Siren is in sleep mode until the broker sends a message to control the siren.
 
 In "Independent Mode," the Siren works with the PIR, automatically turning on for 10 minutes before going to sleep.
 Independent Mode will persist until the MQTT broker connection is restored.
+
+Updates
+v.2 - included RF receiver
 */
 
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <RCSwitch.h>
 #include <Ticker.h>
 
 #define siren 1
 const int PIR = 0;
 #define STLED 2
+#define RFIN 3
 
 #define SirenTopic_send "sta/floor3/LR/node/siren"
 #define SirenTopic_listn "cmd/floor3/LR/node/siren"
 #define motionDetect_send "sta/floor3/LR/node/PIR"
+#define RFRecivedData_send "sta/floor3/LR/node/RF"
 
 #define check_connection_send "sta/floor3/LR/node/cnt"
 
@@ -50,6 +56,7 @@ const int timeoutT = 5;  //after sending status msg, timeout timer to recive HA 
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+RCSwitch rfReciver = RCSwitch();
 
 Ticker Timer1;  // Timer for ststus checking
 Ticker Timer2;  // Timer for Siren on time
@@ -59,10 +66,11 @@ void ICACHE_RAM_ATTR motionDetect();  // Used to pre determine the motion detect
 
 void setup() {
 
-  Serial.begin(115200);
+  //Serial.begin(115200);
   pinMode(siren, OUTPUT);
   pinMode(STLED, OUTPUT);
   pinMode(PIR, INPUT);
+  rfReciver.enableReceive(RFIN); 
 
   attachInterrupt(PIR, motionDetect, FALLING);  // connect PIR as a hardwear interrupt
 
@@ -77,8 +85,8 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     ledBlink(ST_CONNECT_WiFi);
   }
-  Serial.println();
-  Serial.printf("WiFi Connected: %s\n", ssid);
+  //Serial.println();
+  //Serial.printf("WiFi Connected: %s\n", ssid);
 
   client.setServer(mqttServer, mqttPort);
   client.setCallback(callBack);
@@ -88,7 +96,7 @@ void setup() {
   while (!client.connected()) {
     ledBlink(ST_CONNECT_MQTT);
   }
-  Serial.println("Connected to MQTT server");
+  //Serial.println("Connected to MQTT server");
 
   client.subscribe(check_connection_rec);
   client.subscribe(SirenTopic_listn);
@@ -109,5 +117,11 @@ void loop() {
 
   client.loop();
   rutine();
+
+  if (rfReciver.available()){
+    rfRecived(rfReciver.getReceivedValue(),rfReciver.getReceivedBitlength(),rfReciver.getReceivedDelay(),rfReciver.getReceivedProtocol());
+     rfReciver.resetAvailable();
+  }
+
   ESP.wdtFeed();
 }

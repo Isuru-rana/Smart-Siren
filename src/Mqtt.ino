@@ -7,7 +7,7 @@ void callBack(char* topic, byte* payload, unsigned int length) {
     payloadStr += (char)payload[i];
   }
 
-  Serial.printf("Topic: %s , Payload: %s\n", topic, payloadStr);
+  //Serial.printf("Topic: %s , Payload: %s\n", topic, payloadStr);
 
 
   // if check connection message is recived from HA os,
