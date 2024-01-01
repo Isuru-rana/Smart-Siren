@@ -1,4 +1,4 @@
-/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.2 ========================
+/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.3 ========================
 This code is developed for a node device in a home automation system that runs on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
@@ -21,7 +21,7 @@ v2.1.0 - 2023/10/02 - functions added:
         2. Users can ask for the independent mode status from the node, replying with the same topic
            to the broker.
     Bugs fixed: 
-        Struck while connecting to MQTT broker if WiFi disconnected bug fixed.
+        Struck while connecting to the MQTT broker if WiFi disconnected bug fixed.
                       
 v.2.1.1 - 2023/10/02 - modifications: 
     Fixed siren time changed for a variable that can be set by the user via MQTT.
@@ -47,6 +47,12 @@ v.2.2.2 - 2023/10/08 - bugs fixed:
     Siren pin changed due to RX pin startup signals.
     Modified the code for MQTT reconnecting due to being stuck at connecting.
     WiFi and MQTT reconnection functions divided into two separate functions.
+
+v.2.2.3 - 2023/10/10 - improvements: 
+    Siren manual system turn off can deactivate manual siren activation.
+    Included new "Auto Trigger" and "Manual Trigger" modes for manual mod setup.
+    Trigger Modes are added to EEPROM.
+    Added Startup message.
 */
 
 
@@ -59,7 +65,8 @@ v.2.2.2 - 2023/10/08 - bugs fixed:
 #define System_state_First_boot_Address 0
 #define System_state_Address 1
 #define debug_mode_Address 2
-#define System_delay_Address 3
+#define System_mode_Address 3
+#define System_delay_Address 4
 
 #define siren 0
 const int PIR = 1;
@@ -94,6 +101,8 @@ const int PIR = 1;
 #define check_connection_rec_payload "online"
 
 #define motionDetect_send "sta/floor3/LR/node/PIR"
+
+#define startUp_message "sta/floor3/LR/node/start"
 
 //RF data transmit 
 #define RFRecivedData_send "data/floor3/LR/node/RF"
@@ -139,8 +148,8 @@ void setup() {
   // get value for the state of the system from EEPROM and store it in system state bool
   if (EEPROM.read(System_state_First_boot_Address) == 1) {  // Check if this is the first boot
     node_system_state = EEPROM.read(System_state_Address);  // If this is first boot
+    node_state = EEPROM.read(System_mode_Address);  // Auto trigger mode set
     EEPROM.get(System_delay_Address,Siren_on_time_in_sec);
-    //debug_mode = EEPROM.read(debug_mode_Address);
   } else {
     EEPROM.write(System_state_Address, 1);
     EEPROM.commit();
@@ -150,8 +159,10 @@ void setup() {
     EEPROM.commit();
     EEPROM.put(System_delay_Address, 600); // default delay set to 10 mins(600 sec)
     EEPROM.commit();
+    EEPROM.write(System_mode_Address, 0);
     Siren_on_time_in_sec = EEPROM.read(System_delay_Address);
     node_system_state = EEPROM.read(System_state_Address);
+    node_state = EEPROM.read(System_mode_Address);
   }
 
   //Serial.begin(115200);
@@ -190,6 +201,8 @@ void setup() {
   if (EEPROM.read(debug_mode_Address)) {
     client.publish("testing code", "passed Setup");
   }
+
+  client.publish(startUp_message,"");
 }
 
 bool temp1 = false;

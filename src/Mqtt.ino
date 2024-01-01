@@ -26,30 +26,42 @@ void callBack(char* topic, byte* payload, unsigned int length) {
     if (payloadStr.equals("Turn ON")) {
       EEPROM.write(debug_mode_Address, 1);
       EEPROM.commit();
-      client.publish(debug_mode_sta, "Debug mode is TURN ON");
+      client.publish(debug_mode_sta, "Debug, ON");
+      client.publish("testing code", "Debug mode is TURN ON");
     } else if (payloadStr.equals("Turn OFF")) {
       EEPROM.write(debug_mode_Address, 0);
       EEPROM.commit();
-      client.publish(debug_mode_sta, "Debug mode is TURN OFF");
+      client.publish(debug_mode_sta, "Debug, OFF");
+      client.publish("testing code", "Debug mode is TURN OFF");
     }
   }
 
   if (topicStr.equals(SirenTopic_listn)) {
     if (payloadStr.equals("Turn ON")) {
-      digitalWrite(siren, HIGH);
-      SirenON_OFF = true;
-      Timer2.attach(Siren_on_time_in_sec, sirenOfftime);
-
-      if (EEPROM.read(debug_mode_Address)) {
-        client.publish("testing code", "Siren Turn On with manual mqtt");
+      if (node_system_state == true) {
+        digitalWrite(siren, HIGH);
+        SirenON_OFF = true;
+        Timer2.attach(Siren_on_time_in_sec, sirenOfftime);
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "Siren Turn On with manual mqtt");
+        }
+      } else {
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "Siren ON restricted due to system deactivated");
+        }
       }
-
     } else if (payloadStr.equals("Turn OFF")) {
-      digitalWrite(siren, LOW);
-      SirenON_OFF = false;
-      Timer2.detach();
-      if (EEPROM.read(debug_mode_Address)) {
-        client.publish("testing code", "Siren Turn Off with manual mqtt");
+      if (node_system_state == true) {
+        digitalWrite(siren, LOW);
+        SirenON_OFF = false;
+        Timer2.detach();
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "Siren Turn Off with manual mqtt");
+        }
+      } else {
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "Siren already in off due to system deactivated");
+        }
       }
     }
   }
@@ -57,19 +69,31 @@ void callBack(char* topic, byte* payload, unsigned int length) {
   else if (topicStr.equals(nodeStateSetManual_Listn)) {  //  set/floor3/LR/node/mode
     if (payloadStr.equals("Turn ON")) {
       node_state = true;
-      client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
+      client.publish(nodeStateSetManual_sta, "AutoTrigger, ON");
+      if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "Siren state set to on done!");
+        }
     } else if (payloadStr.equals("Turn OFF")) {
       node_state = false;
-      client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
+      client.publish(nodeStateSetManual_sta, "AutoTrigger, OFF");
+      if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "Siren state set to off done!");
+        }
     }
   }
 
   else if (topicStr.equals(nodeStateSetManual_sta)) {  //
     if (payloadStr.equals("????")) {
       if (node_state == true) {
-        client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
+        client.publish(nodeStateSetManual_sta, "AutoTrigger, ON");
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "Siren state check done! AutoTrigger On");
+        }
       } else if (node_state == false) {
-        client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
+        client.publish(nodeStateSetManual_sta, "AutoTrigger, OFF");
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "Siren state check done! AutoTrigger Off");
+        }
       }
     }
   }
@@ -80,15 +104,21 @@ void callBack(char* topic, byte* payload, unsigned int length) {
 
     int buffer = valStr.toInt();
 
-    if (buffer > 10 && buffer < 3600) {
+    if (buffer > 9 && buffer < 3601) {
       Siren_on_time_in_sec = valStr.toInt();
       EEPROM.put(System_delay_Address, Siren_on_time_in_sec);
       EEPROM.commit();
-      String tempPayLoad = "delay Set successful! new delay: ";
+      String tempPayLoad = "NewDelay, ";
       tempPayLoad += String(Siren_on_time_in_sec);
       client.publish(nodeOntimeConfig_sta, tempPayLoad.c_str());
+      if (EEPROM.read(debug_mode_Address)) {
+        client.publish("testing code", "delay Set successful!");
+      }
     } else {
-      client.publish(nodeOntimeConfig_sta, "Invalid Input, Min: 10 (10s), max: 3600 (1h)");
+      client.publish(nodeOntimeConfig_sta, "Invalid:001");
+      if (EEPROM.read(debug_mode_Address)) {
+        client.publish("testing code", "delay Input data Invalid: min 10 (10s): max 3600 (1h)");
+      }
     }
   }
 
@@ -97,15 +127,24 @@ void callBack(char* topic, byte* payload, unsigned int length) {
       String tempPayLoad = "Delay, ";
       tempPayLoad += String(Siren_on_time_in_sec);
       client.publish(nodeOntimeConfig_sta, tempPayLoad.c_str());
+      if (EEPROM.read(debug_mode_Address)) {
+        client.publish("testing code", "Delay check successful!");
+      }
     }
   }
 
   else if (topicStr.equals(nodeSystemState_listn)) {  // cmd/floor3/LR/node/system
     if (payloadStr.equals("Turn OFF")) {
       node_system_state = false;
+      digitalWrite(siren, LOW);
+      SirenON_OFF = false;
+      Timer2.detach();
       EEPROM.write(System_state_Address, 0);
       EEPROM.commit();
       client.publish(nodeSystemState_send, "Sys OFF!");
+      if (EEPROM.read(debug_mode_Address)) {
+        client.publish("testing code", "System turn off successful!");
+      }
     }
 
     else if (payloadStr.equals("Turn ON") && node_system_state == false) {
@@ -113,8 +152,11 @@ void callBack(char* topic, byte* payload, unsigned int length) {
       EEPROM.write(System_state_Address, 1);
       EEPROM.commit();
       client.publish(nodeSystemState_send, "Sys ON!");
+      if (EEPROM.read(debug_mode_Address)) {
+        client.publish("testing code", "System turn on successful!");
+      }
     }
-/*
+    /*
     else if (payloadStr.equals("Turn ON") && node_system_state == true) {
       client.publish(nodeSystemState_send, "System is in On state already!");
     }
@@ -124,9 +166,15 @@ void callBack(char* topic, byte* payload, unsigned int length) {
   else if (topicStr.equals(nodeSystemState_send)) {  // sta/floor3/LR/node/system
     if (payloadStr.equals("????")) {
       if (node_system_state == false) {
-        client.publish(nodeSystemState_send, "System in TURN OFF state");
+        client.publish(nodeSystemState_send, "sys, OFF");
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "System in turn off state");
+        }
       } else if (node_system_state == true) {
-        client.publish(nodeSystemState_send, "System in TURN ON state");
+        client.publish(nodeSystemState_send, "sys, ON");
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "System in turn on state");
+        }
       }
     }
   }
