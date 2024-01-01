@@ -35,7 +35,7 @@ void callBack(char* topic, byte* payload, unsigned int length) {
   }
 
   if (topicStr.equals(SirenTopic_listn)) {
-    if (payloadStr.equals("On")) {
+    if (payloadStr.equals("Turn ON")) {
       digitalWrite(siren, HIGH);
       SirenON_OFF = true;
       Timer2.attach(Siren_on_time_in_sec, sirenOfftime);
@@ -44,7 +44,7 @@ void callBack(char* topic, byte* payload, unsigned int length) {
         client.publish("testing code", "Siren Turn On with manual mqtt");
       }
 
-    } else if (payloadStr.equals("Off")) {
+    } else if (payloadStr.equals("Turn OFF")) {
       digitalWrite(siren, LOW);
       SirenON_OFF = false;
       Timer2.detach();
@@ -55,10 +55,10 @@ void callBack(char* topic, byte* payload, unsigned int length) {
   }
 
   else if (topicStr.equals(nodeStateSetManual_Listn)) {  //  set/floor3/LR/node/mode
-    if (payloadStr.equals("On")) {
+    if (payloadStr.equals("Turn ON")) {
       node_state = true;
       client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
-    } else if (payloadStr.equals("Off")) {
+    } else if (payloadStr.equals("Turn OFF")) {
       node_state = false;
       client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
     }
@@ -105,19 +105,20 @@ void callBack(char* topic, byte* payload, unsigned int length) {
       node_system_state = false;
       EEPROM.write(System_state_Address, 0);
       EEPROM.commit();
-      client.publish(nodeSystemState_send, "System turn off success!");
+      client.publish(nodeSystemState_send, "Sys OFF!");
     }
 
     else if (payloadStr.equals("Turn ON") && node_system_state == false) {
       node_system_state = true;
       EEPROM.write(System_state_Address, 1);
       EEPROM.commit();
-      client.publish(nodeSystemState_send, "System turn on success!");
+      client.publish(nodeSystemState_send, "Sys ON!");
     }
-
+/*
     else if (payloadStr.equals("Turn ON") && node_system_state == true) {
       client.publish(nodeSystemState_send, "System is in On state already!");
     }
+    */
   }
 
   else if (topicStr.equals(nodeSystemState_send)) {  // sta/floor3/LR/node/system

@@ -1,4 +1,4 @@
-/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.1 ========================
+/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.2 ========================
 This code is developed for a node device in a home automation system that runs on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
@@ -21,7 +21,7 @@ v2.1.0 - 2023/10/02 - functions added:
         2. Users can ask for the independent mode status from the node, replying with the same topic
            to the broker.
     Bugs fixed: 
-        Struck while connecting to the MQTT broker if WiFi disconnected bug fixed.
+        Struck while connecting to MQTT broker if WiFi disconnected bug fixed.
                       
 v.2.1.1 - 2023/10/02 - modifications: 
     Fixed siren time changed for a variable that can be set by the user via MQTT.
@@ -42,6 +42,11 @@ v.2.2.0 - 2023/10/03 - feature added:
 v.2.2.1 - 2023/10/06 - debug/feature added: 
     Added EEPROM to store configs and debug mode details.
     Added debug mode to limit unwanted MQTT messages.
+
+v.2.2.2 - 2023/10/08 - bugs fixed: 
+    Siren pin changed due to RX pin startup signals.
+    Modified the code for MQTT reconnecting due to being stuck at connecting.
+    WiFi and MQTT reconnection functions divided into two separate functions.
 */
 
 
@@ -56,36 +61,42 @@ v.2.2.1 - 2023/10/06 - debug/feature added:
 #define debug_mode_Address 2
 #define System_delay_Address 3
 
-#define siren 1
-const int PIR = 0;
+#define siren 0
+const int PIR = 1;
 #define STLED 2
 #define RFIN 3
-
-#define SirenTopic_send "sta/floor3/LR/node/siren"
+/*
+ *  cmd - commands
+ *  data - data transfer
+ *  set - configurable inputs
+ *  sta - status indicators 
+ * 
+ * 
+ */
 #define SirenTopic_listn "cmd/floor3/LR/node/siren"
-
-#define motionDetect_send "sta/floor3/LR/node/PIR"
-
-#define RFRecivedData_send "data/floor3/LR/node/RF"
-
-#define nodeStateSetManual_Listn "set/floor3/LR/node/mode"
-//#define nodeStateSetSuccess_send "set_ok/floor3/LR/node/mode"
-#define nodeStateSetManual_sta "sta/floor3/LR/node/mode"
-
-#define nodeOntimeConfig_listn "config/floor3/LR/node/delay"
-//#define nodeOntimeConfigSuccess_send "config_ok/floor3/LR/node/delay"
-#define nodeOntimeConfig_sta "sta/floor3/LR/node/delay"
+#define SirenTopic_send "sta/floor3/LR/node/siren"
 
 #define nodeSystemState_listn "cmd/floor3/LR/node/system"
-//#define nodeSystemStateSuccess_send "cmd_ok/floor3/LR/node/system"
 #define nodeSystemState_send "sta/floor3/LR/node/system"
+
+#define debug_mode_listn "cmd/floor3/LR/node/debug"
+#define debug_mode_sta "sta/floor3/LR/node/debug"
+
+#define nodeStateSetManual_Listn "cmd/floor3/LR/node/mode"
+#define nodeStateSetManual_sta "sta/floor3/LR/node/mode"
+
+//configs
+#define nodeOntimeConfig_listn "set/floor3/LR/node/delay"
+#define nodeOntimeConfig_sta "sta/floor3/LR/node/delay"
 
 #define check_connection_send "sta/floor3/LR/node/cnt"
 #define check_connection_rec "sta/HA/sta"
 #define check_connection_rec_payload "online"
 
-#define debug_mode_listn "cmd/floor3/LR/node/debug"
-#define debug_mode_sta "sta/floor3/LR/node/debug"
+#define motionDetect_send "sta/floor3/LR/node/PIR"
+
+//RF data transmit 
+#define RFRecivedData_send "data/floor3/LR/node/RF"
 
 #define ST_CONNECT_WiFi 100
 #define ST_CONNECT_MQTT 200

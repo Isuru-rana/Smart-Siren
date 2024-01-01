@@ -1,46 +1,47 @@
-void reconnect() {
-  int timeout = 30;
-  bool status = false;
+int timeout = 30;
+//bool status = false;
 
+void reconnect() {
+
+  WiFiReconnect();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    MQTTReconnect();
+  }
+  else {
+    WiFiReconnect();
+  }
+
+}
+
+
+
+void WiFiReconnect() {
   if (WiFi.status() != WL_CONNECTED) {
-    //Serial.print("WiFi disconnected");
-    node_state = true;
+    node_state = true; // setting to independent mode
 
     while (WiFi.status() != WL_CONNECTED && timeout > 0) {
       ledBlink(ST_CONNECT_WiFi);
-      status = true;
       timeout--;
       ESP.wdtFeed();
 
       if (timeout < 1) {
-        // Serial.println("  timeout! Retring....");
         timeout = 30;
-
-        // Serial.print("WiFi disconnected");
       }
     }
   }
+}
 
-  if (status != false) {
-    //Serial.println();
-    //Serial.println("WiFi Connected");
-
-    status = false;
-    node_state = true;
-  }
-
+void MQTTReconnect() {
   if (WiFi.status() == WL_CONNECTED && !client.connected()) {
-    //Serial.println("Mqtt Server disconnected");
-    while (!client.connected() && WiFi.status() == WL_CONNECTED) {
+    while (!client.connected()) {
       ledBlink(ST_CONNECT_MQTT);
       client.connect("Test Node 1", mqttUsername, mqttPassword);
       ESP.wdtFeed();
+      if (WiFi.status() != WL_CONNECTED) {
+        WiFiReconnect();
+      }
     }
-    if (WiFi.status() != WL_CONNECTED){
-      return;
-    }
-
-    //Serial.println("MQTT Server connected!");
     node_state = false;
     subscribeChannels();
     nodeStatusfunc();
