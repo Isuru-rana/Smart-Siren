@@ -1,4 +1,4 @@
-/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.1.0 ========================
+/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.1.2 ========================
 This code is developed for a node device in a home automation system that runs on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
@@ -17,17 +17,21 @@ v2.1.0 - 2023/10/02 - functions added:
     In this update:
         1. Users can manually set the node into independent mode, triggering
            the siren automatically with motion while sending an MQTT message to the MQTT broker.
-           The activated siren can be deactivated with MQTT.
+           Activated siren can deactivate with MQTT.
         2. Users can ask for the independent mode status from the node, replying with the same topic
            to the broker.
     Bugs fixed: 
-        Struck while connecting to the MQTT broker if WiFi disconnected bug fixed.
+        Struck while connecting to MQTT broker if WiFi disconnected bug fixed.
                       
 v.2.1.1 - 2023/10/02 - modifications: 
     Fixed siren time changed for a variable that can be set by the user via MQTT.
     Bugs fixed: 
         Not responding to the config and state set setting fixed.
         MQTT stuck loop at WiFi disconnects enhanced.
+
+v.2.1.2 - 2023/10/03 - bug fixed: 
+    Delay input validation added.
+    Invalid value input error message included.
 */
 
 
