@@ -1,4 +1,4 @@
-/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.1.2 ========================
+/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.0 ========================
 This code is developed for a node device in a home automation system that runs on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
@@ -17,11 +17,11 @@ v2.1.0 - 2023/10/02 - functions added:
     In this update:
         1. Users can manually set the node into independent mode, triggering
            the siren automatically with motion while sending an MQTT message to the MQTT broker.
-           Activated siren can deactivate with MQTT.
+           The activated siren can deactivate with MQTT.
         2. Users can ask for the independent mode status from the node, replying with the same topic
            to the broker.
     Bugs fixed: 
-        Struck while connecting to MQTT broker if WiFi disconnected bug fixed.
+        Struck while connecting to the MQTT broker if WiFi disconnected bug fixed.
                       
 v.2.1.1 - 2023/10/02 - modifications: 
     Fixed siren time changed for a variable that can be set by the user via MQTT.
@@ -32,6 +32,12 @@ v.2.1.1 - 2023/10/02 - modifications:
 v.2.1.2 - 2023/10/03 - bug fixed: 
     Delay input validation added.
     Invalid value input error message included.
+
+v.2.2.0 - 2023/10/03 - feature added: 
+    Manual Node off state
+    In this feature, the user can manually turn off the siren to stop automatic
+    independent mode change. This gives the user maintenance time for the MQTT broker
+    while the device is in the deactivated mode.
 */
 
 
@@ -49,21 +55,26 @@ const int PIR = 0;
 #define SirenTopic_listn "cmd/floor3/LR/node/siren"
 #define motionDetect_send "sta/floor3/LR/node/PIR"
 #define RFRecivedData_send "sta/floor3/LR/node/RF"
+
 #define nodeStateSetManual_Listn "set/floor3/LR/node/mode"
 #define nodeStateSetSuccess_send "set_ok/floor3/LR/node/mode"
 #define nodeStateSetManual_sta "sta/floor3/LR/node/mode"
+
 #define nodeOntimeConfig_listn "config/floor3/LR/node/delay"
 #define nodeOntimeConfigSuccess_send "config_ok/floor3/LR/node/delay"
 #define nodeOntimeConfig_sta "sta/floor3/LR/node/delay"
 
-#define check_connection_send "sta/floor3/LR/node/cnt"
+#define nodeSystemState_listn "cmd/floor3/LR/node/system"
+#define nodeSystemStateSuccess_send "cmd_ok/floor3/LR/node/system"
+#define nodeSystemState_send "sta/floor3/LR/node/system"
 
+#define check_connection_send "sta/floor3/LR/node/cnt"
 #define check_connection_rec "sta/HA/sta"
 #define check_connection_rec_payload "online"
 
 #define ST_CONNECT_WiFi 100
 #define ST_CONNECT_MQTT 200
-int Siren_on_time_in_sec = 600;  //10 mins = 600
+int Siren_on_time_in_sec = 600;  //10 mins = 600 [value is in secs.]
 
 const char* ssid = "Home WiFi Network";
 const char* password = "Whoareyou?";
@@ -73,7 +84,8 @@ const int mqttPort = 1883;
 const char* mqttUsername = "mqtt-home";
 const char* mqttPassword = "Iamironman";
 
-bool node_state = false;  // false == HA conected Mode || true == Indipendent mode
+bool node_state = false;        // false == HA conected Mode || true == Indipendent mode
+bool node_system_state = true;  // false == Auto indipendent Stop || true == Auto independant On
 
 bool SirenON_OFF = false;  // Is siren on or off
 
@@ -97,14 +109,14 @@ void setup() {
   pinMode(siren, OUTPUT);
   pinMode(STLED, OUTPUT);
   pinMode(PIR, INPUT);
-  rfReciver.enableReceive(RFIN); 
+  rfReciver.enableReceive(RFIN);
 
   attachInterrupt(PIR, motionDetect, FALLING);  // connect PIR as a hardwear interrupt
 
   Timer1.attach(30, nodeStatusfunc);
 
   ESP.wdtDisable();
-  ESP.wdtEnable(WDTO_1S); // Enabaling Watchdog timer for 1 sec.
+  ESP.wdtEnable(WDTO_1S);  // Enabaling Watchdog timer for 1 sec.
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -118,7 +130,7 @@ void setup() {
   client.setServer(mqttServer, mqttPort);
   client.setCallback(callBack);
 
-  client.connect("Siren Node 1", mqttUsername, mqttPassword);
+  client.connect("Floor3 Node", mqttUsername, mqttPassword);
 
   while (!client.connected()) {
     ledBlink(ST_CONNECT_MQTT);
@@ -131,6 +143,7 @@ void setup() {
 }
 
 bool temp1 = false;
+
 void loop() {
   if (!temp1) {
     client.publish("testing code", "Loop started");
@@ -144,9 +157,9 @@ void loop() {
   client.loop();
   rutine();
 
-  if (rfReciver.available()){
-    rfRecived(rfReciver.getReceivedValue(),rfReciver.getReceivedBitlength(),rfReciver.getReceivedDelay(),rfReciver.getReceivedProtocol());
-     rfReciver.resetAvailable();
+  if (rfReciver.available()) {
+    rfRecived(rfReciver.getReceivedValue(), rfReciver.getReceivedBitlength(), rfReciver.getReceivedDelay(), rfReciver.getReceivedProtocol());
+    rfReciver.resetAvailable();
   }
 
   ESP.wdtFeed();

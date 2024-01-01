@@ -37,19 +37,19 @@ void callBack(char* topic, byte* payload, unsigned int length) {
       Timer2.detach();
       client.publish("testing code", "Siren Turn Off with manual mqtt");
     }
-  } 
-  
-  else if (topicStr.equals(nodeStateSetManual_Listn)) {
+  }
+
+  else if (topicStr.equals(nodeStateSetManual_Listn)) { //set/floor3/LR/node/mode
     if (payloadStr.equals("on")) {
-      node_state == true;
+      node_state = true;
       client.publish(nodeStateSetSuccess_send, "INDIPENDENT, ON");
-    }else if (payloadStr.equals("off")) {
-      node_state == false;
+    } else if (payloadStr.equals("off")) {
+      node_state = false;
       client.publish(nodeStateSetSuccess_send, "INDIPENDENT, OFF");
     }
-  } 
-  
-  else if (topicStr.equals(nodeStateSetManual_sta)) {
+  }
+
+  else if (topicStr.equals(nodeStateSetManual_sta)) { //
     if (payloadStr.equals("???")) {
       if (node_state == true) {
         client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
@@ -57,30 +57,51 @@ void callBack(char* topic, byte* payload, unsigned int length) {
         client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
       }
     }
-  } 
-  
+  }
+
   else if (topicStr.equals(nodeOntimeConfig_listn)) {
     int commaIndex = payloadStr.indexOf(',');
     String valStr = payloadStr.substring(commaIndex + 2);
-    
+
     int buffer = valStr.toInt();
 
-    if (buffer < 10 && buffer > 3600){
+    if (buffer < 10 && buffer > 3600) {
       Siren_on_time_in_sec = valStr.toInt();
       String tempPayLoad = "delay Set successful! new delay: ";
       tempPayLoad += String(Siren_on_time_in_sec);
-    client.publish(nodeOntimeConfigSuccess_send, tempPayLoad.c_str());
-    }
-    else{
+      client.publish(nodeOntimeConfigSuccess_send, tempPayLoad.c_str());
+    } else {
       client.publish(nodeOntimeConfigSuccess_send, "Invalid Input, Min: 10 (10s), max: 3600 (1h)");
-    }    
-  } 
-  
-  else if (topicStr.equals(nodeOntimeConfig_sta)) {
+    }
+  }
+
+  else if (topicStr.equals(nodeOntimeConfig_sta)) { // sta/floor3/LR/node/delay
     if (payloadStr.equals("???")) {
       String tempPayLoad = "Delay, ";
       tempPayLoad += String(Siren_on_time_in_sec);
       client.publish(nodeOntimeConfig_sta, tempPayLoad.c_str());
+    }
+  }
+
+  else if (topicStr.equals(nodeSystemState_listn)) { // cmd/floor3/LR/node/system
+    if (payloadStr.equals("Turn OFF")) {
+      node_system_state = false;
+      client.publish(nodeSystemStateSuccess_send, "System turn off success!");
+    } else if (payloadStr.equals("Turn ON") && node_system_state == false) {
+      node_system_state = true;
+      client.publish(nodeSystemStateSuccess_send, "System turn on success!");
+    } else if (payloadStr.equals("Turn ON") && node_system_state == true) {
+      client.publish(nodeSystemStateSuccess_send, "System is in On state already!");
+    }
+  }
+
+  else if (topicStr.equals(nodeSystemState_send)) { // sta/floor3/LR/node/system
+    if (payloadStr.equals("???")) {
+      if (node_system_state == false) {
+        client.publish(nodeSystemState_send, "System in turn off state");
+      } else if (node_system_state == true) {
+        client.publish(nodeSystemState_send, "System in turn on state");
+      }
     }
   }
 }

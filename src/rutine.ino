@@ -18,12 +18,16 @@ void sirenOfftime() {
 
 void notRespond() {
   // set siren into indipendent mode and reset timer settied from timer1 interrupt
-  node_state = true;
-  //statusTimer = 0;
-  //statusTimer = millis();
-  client.subscribe(check_connection_rec);
-
-  client.publish("testing code", "Timer3 respose time exeded. indipendent mode ON");
-
-  Timer3.detach();
+  if (node_system_state == true) {
+    node_state = true;
+    //statusTimer = 0;
+    //statusTimer = millis();
+    client.subscribe(check_connection_rec);
+    client.publish("testing code", "Timer3 respose time exeded. indipendent mode ON");
+    Timer3.detach();
+  }
+  else if (node_system_state == false){
+    Timer3.detach();
+    client.publish("testing code", "system is in deactive mode: timer resets");
+  }
 }

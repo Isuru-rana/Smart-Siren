@@ -12,11 +12,11 @@ void rfRecived(unsigned long data, unsigned int length, unsigned int pulse_lengt
 
   int num1 = strtol(address, NULL, 2);
 
-bool isTrue = strcmp(state, "01010101") == 0;
+  bool isTrue = strcmp(state, "01010101") == 0;
 
-String mqttMessage = "Address, " + String(num1) + ", state, " + (isTrue ? "true" : "false");
+  String mqttMessage = "Address, " + String(num1) + ", state, " + (isTrue ? "true" : "false");
 
-   client.publish(RFRecivedData_send, mqttMessage.c_str(), true);
+  client.publish(RFRecivedData_send, mqttMessage.c_str(), true);
 }
 
 
