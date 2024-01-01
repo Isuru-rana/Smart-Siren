@@ -1,5 +1,5 @@
 /* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.5 ========================
-This code is developed for a node device in a home automation system that runs on Home Assistant OS.
+This code is developed for a node device in a home automation system running on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
 
@@ -61,7 +61,7 @@ v.2.2.4 - 2023/10/11 - features added:
 v.2.2.5 - 2023/10/11 - features added: 
     Auto trigger siren sync messages added.
     MQTT reconnecting reboot added.
-    Bugs fixed: 
+    Bugs Fixed: 
         Deactivating autotrigger mode issue fixed.
 */
 
@@ -132,7 +132,7 @@ const char* mqttPassword = "Iamironman";
 
 bool node_state = false;        // false == HA conected Mode || true == Indipendent mode
 bool autoTrigger_state = false; // false == Auto trigger Off manually ||  true == Auto Trigger On 
-bool node_system_state = true;  // false == Systen turn off || true == System turn ON
+bool node_system_state;  // false == Systen turn off || true == System turn ON
 bool debug_mode_state = false;
 bool startUp_flag = true;
 
