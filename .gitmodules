@@ -1,0 +1,12 @@
+[submodule "libraries/ESP8266WiFi"]
+	path = libraries/ESP8266WiFi
+	url = https://github.com/esp8266/Arduino.git
+[submodule "libraries/pubsubclient"]
+	path = libraries/pubsubclient
+	url = https://github.com/knolleary/pubsubclient.git
+[submodule "libraries/rc-switch"]
+	path = libraries/rc-switch
+	url = https://github.com/sui77/rc-switch.git
+[submodule "libraries/EEPROM"]
+	path = libraries/EEPROM
+	url = https://github.com/PaulStoffregen/EEPROM.git
