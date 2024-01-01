@@ -7,19 +7,14 @@ void callBack(char* topic, byte* payload, unsigned int length) {
     payloadStr += (char)payload[i];
   }
 
-  //Serial.printf("Topic: %s , Payload: %s\n", topic, payloadStr);
-
-
   // if check connection message is recived from HA os,
   if (topicStr.equals(check_connection_rec)) {
     if (payloadStr.equals("online")) {
       Timer3.detach();
-      if (autoTrigger_state == false) {
-        if (node_mode) {  // set node state to HA mode again if on Indipendent mode
-          node_mode = false;
-          if (EEPROM.read(debug_mode_Address)) {
-            client.publish("testing code", "response recived. turning off indipendent mode");
-          }
+      if (node_mode) {  // set node state to HA mode again if on Indipendent mode
+        node_mode = false;
+        if (EEPROM.read(debug_mode_Address)) {
+          client.publish("testing code", "response recived. turning off indipendent mode");
         }
       }
     }
@@ -66,14 +61,14 @@ void callBack(char* topic, byte* payload, unsigned int length) {
       }
     } else if (payloadStr.equals("Turn OFF")) {
       //if (node_system_state == true) {
-        digitalWrite(siren, LOW);
-        SirenON_OFF = false;
-        Timer2.detach();
-        client.publish(SirenTopic_send, "Siren, OFF!");
-        if (EEPROM.read(debug_mode_Address)) {
-          client.publish("testing code", "Siren Turn Off with manual mqtt");
-        }
-      //} 
+      digitalWrite(siren, LOW);
+      SirenON_OFF = false;
+      Timer2.detach();
+      client.publish(SirenTopic_send, "Siren, OFF!");
+      if (EEPROM.read(debug_mode_Address)) {
+        client.publish("testing code", "Siren Turn Off with manual mqtt");
+      }
+      //}
       /*
       else {
         if (EEPROM.read(debug_mode_Address)) {
@@ -205,6 +200,12 @@ void callBack(char* topic, byte* payload, unsigned int length) {
           client.publish("testing code", "System in turn on state");
         }
       }
+    }
+  }
+
+  if (topicStr.equals(resetReason_sta)) {
+    if (payloadStr.equals("????")) {
+      rebootStatus();
     }
   }
 }

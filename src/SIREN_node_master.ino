@@ -1,4 +1,4 @@
-/* ========= Siren + PIR + MQTT node ESP01S stable v.2.2.7 ========================
+/* ========= Siren + PIR + MQTT node ESP01S stable v.2.3.0 ========================
 This code is developed for a node device in a home automation system running on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
@@ -66,7 +66,13 @@ v.2.2.5 - 2023/10/11 - feature added:
 
 v.2.2.6 - Description Missing
 
-v.2.2.7 - 2023/10/17 - Description Missing
+v.2.3.0 (Stable) - 2023/10/17 - fixes: 
+    Booting restart fixed.
+    Added reboot/monitoring.
+    Code optimized.
+    Connecting LED Indication changed for less power usage method.
+    Added Independent mode if not connected to the network in the first 5 secs.
+    Added device hostname setting.
 
 */
 
@@ -83,16 +89,18 @@ v.2.2.7 - 2023/10/17 - Description Missing
 #define debug_mode_Address 3
 #define System_delay_Address 4
 
-#define siren 0
-const int PIR = 1;
+#define siren 3
+const int PIR = 0;
 #define STLED 2
-#define RFIN 3
+#define RFIN 1
 /*
  *  cmd - commands
  *  data - data transfer
  *  set - configurable inputs
  *  sta - status indicators 
  */
+
+#define device_ID "Floor3 Node"
 #define SirenTopic_listn "cmd/floor3/LR/node/siren"
 #define SirenTopic_send "sta/floor3/LR/node/siren"
 
@@ -116,14 +124,21 @@ const int PIR = 1;
 #define motionDetect_send "sta/floor3/LR/node/PIR"
 #define startUp_message "sta/floor3/LR/node/start"
 
+#define resetReason_sta "sta/floor3/LR/node/reset"
+
 //RF data transmit
 #define RFRecivedData_send "data/floor3/LR/node/RF"
 
 #define ST_CONNECT_WiFi 100
-#define ST_CONNECT_MQTT 200
-#define WiFi_LED_pattern_timeout 30
+#define ST_CONNECT_MQTT 300
+#define WiFi_LED_timeout 100
+#define MQTT_LED_timeout 100
+#define WiFi_timeout_counter 3
+#define MQTT_timeout_counter 3
 
 int Siren_on_time_in_sec = 600;  //10 mins = 600 [value is in secs.]
+
+const char* device_name = "IZZO-SN-00001";
 
 const char* ssid = "Home WiFi Network";
 const char* password = "Whoareyou?";
@@ -134,14 +149,12 @@ const char* mqttUsername = "mqtt-home";
 const char* mqttPassword = "Iamironman";
 
 bool node_mode = false;  // false == HA conected Mode || true == Indipendent mode
-bool autoTrigger_state;  // false == Auto trigger Off manually ||  true == Auto Trigger On
-bool node_system_state;  // false == System turn off || true == System turn ON
+bool autoTrigger_state = false;  // false == Auto trigger Off manually ||  true == Auto Trigger On
+bool node_system_state = false;  // false == System turn off || true == System turn ON
 bool debug_mode_state = false;
 bool startUp_flag = true;
 
 bool SirenON_OFF = false;  // Is siren on or off
-
-bool flag1 = false;  //added this bool to stop execuding "noResponse()" function at code start without interrupt
 
 const int timeoutT = 5;  //after sending status msg, timeout timer to recive HA state 5 == 5sec
 
@@ -158,6 +171,10 @@ Ticker Timer3;  // Timer to check status msg recived
 void ICACHE_RAM_ATTR motionDetect();  // Used to pre determine the motion detect variable for hardwear interrupt
 
 void setup() {
+  ESP.wdtDisable();
+  ESP.wdtEnable(WDTO_1S);  // Enabaling Watchdog timer for 1 sec.
+
+  digitalWrite(STLED, HIGH);
 
   EEPROM.begin(9);
 
@@ -197,46 +214,31 @@ void setup() {
 
   Timer1.attach(30, nodeStatusfunc);
 
-  ESP.wdtDisable();
-  ESP.wdtEnable(WDTO_1S);  // Enabaling Watchdog timer for 1 sec.
-
   attachInterrupt(PIR, motionDetect, FALLING);  // connect PIR as a hardware interrupt
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    WiFi_LED_pattern_timeout--;
-    if (WiFi_LED_pattern_timeout < 0) {
-      ledBlink(ST_CONNECT_WiFi);
-    }
-    ESP.wdtFeed();
-  }
+  WiFi.hostname(device_name);
+  WiFiConnect();
 
   client.setServer(mqttServer, mqttPort);
   client.setCallback(callBack);
+  MQTTconnect();
 
-  client.connect("Floor3 Node", mqttUsername, mqttPassword);
-  /*
-  while (!client.connected()) {
-    ledBlink(ST_CONNECT_MQTT);
-  }
-  */
-  MQTTConnect();
-  //Serial.println("Connected to MQTT server");
-  subscribeChannels();
+  client.publish(startUp_message, "null");
+  nodeStatusfunc();
+  rebootStatus();
 
   if (EEPROM.read(debug_mode_Address)) {
     client.publish("testing code", "passed Setup");
   }
-
-  client.publish(startUp_message, "");
-  nodeStatusfunc();
+  ESP.wdtFeed();
+  //digitalWrite(STLED, HIGH);  // added cause status led keep turn on
 }
 
 bool temp1 = false;
 
 void loop() {
+
   if (!temp1) {
     if (EEPROM.read(debug_mode_Address)) {
       client.publish("testing code", "Loop started");
@@ -244,17 +246,20 @@ void loop() {
     }
   }
 
-  if (WiFi.status() != WL_CONNECTED || !client.connected()) {
-    reconnect();
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFiConnect();
+  }
+  if (!client.connected()) {
+    MQTTconnect();
   }
 
   client.loop();
   rutine();
+  ESP.wdtFeed();
 
   if (rfReciver.available()) {
     rfRecived(rfReciver.getReceivedValue(), rfReciver.getReceivedBitlength(), rfReciver.getReceivedDelay(), rfReciver.getReceivedProtocol());
     rfReciver.resetAvailable();
+    ESP.wdtFeed();
   }
-
-  ESP.wdtFeed();
 }

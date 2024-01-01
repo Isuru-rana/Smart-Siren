@@ -1,82 +1,97 @@
-int timeout = 30;
-int timeout2 = 30;
-//bool status = false;
+int connection_timeout;
+int temp_count;
+int led_counter;
 
-void reconnect() {
+void WiFiConnect() {
+  WiFi.begin(ssid, password);
+  //node_mode = true;  // setting to independent mode
 
-  WiFiReconnect();
+  connection_timeout = WiFi_timeout_counter;
+  temp_count = 0;
+  led_counter = WiFi_LED_timeout;
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(100);
+    if (led_counter > 0) {
+      led_counter--;
+      //ESP.wdtFeed();
+    }
+    if (led_counter == 0) {
+      ledBlink(ST_CONNECT_WiFi);
+      temp_count++;
+      led_counter = WiFi_LED_timeout;
+      //ESP.wdtFeed();
+    }
+    if (temp_count == connection_timeout) {
+      node_mode = true;
+      ESP.wdtFeed();
+      temp_count = 0;
+      break;
+    }
+    ESP.wdtFeed();
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    ESP.wdtFeed();
+    WiFiConnect();
+  } 
+}
+
+
+
+void MQTTconnect() {
+
+  connection_timeout = MQTT_timeout_counter;
+  temp_count = 0;
+  led_counter = MQTT_LED_timeout;
 
   if (WiFi.status() == WL_CONNECTED) {
-    MQTTReconnect();
+
+    client.connect(device_ID, mqttUsername, mqttPassword);
+
+    while (!client.connected()) {
+      delay(100);
+      if (led_counter > 0) {
+        led_counter--;
+      }
+      if (led_counter == 0) {
+        ledBlink(ST_CONNECT_MQTT);
+        temp_count++;
+        led_counter = MQTT_LED_timeout;
+      }
+      if (temp_count == connection_timeout) {
+        node_mode = true;
+        temp_count = 0;
+        break;
+      }
+      ESP.wdtFeed();
+    }
+    if (!client.connected()) {
+      ESP.wdtFeed();
+      MQTTconnect();
+    } 
+    if (client.connected()) {
+      node_mode = false;
+      subscribeChannels();
+      nodeStatusfunc();
+      ESP.wdtFeed();
+      delay(100);
+      client.publish(startUp_message, "null"); // system started message
+      client.publish(check_connection_send, "1");
+    }
   } else {
-    WiFiReconnect();
-  }
-}
-
-
-void WiFiReconnect() {
-  if (WiFi.status() != WL_CONNECTED) {
-    
-      node_mode = true;  // setting to independent mode
-    
-    while (WiFi.status() != WL_CONNECTED && timeout > 0) {
-      ledBlink(ST_CONNECT_WiFi);
-      timeout--;
-      ESP.wdtFeed();
-
-      if (timeout < 1) {
-        timeout = 30;
-      }
-    }
-  }
-}
-
-void MQTTReconnect() {
-  if (WiFi.status() == WL_CONNECTED && !client.connected()) {
-    node_mode = true;
-    while (!client.connected()) {
-      ledBlink(ST_CONNECT_MQTT);
-      client.connect("Test Node 1", mqttUsername, mqttPassword);
-      ESP.wdtFeed();
-      timeout2--;
-      if (WiFi.status() != WL_CONNECTED) {
-        WiFiReconnect();
-      }
-      if (timeout2 < 0) {
-        //ESP.restart();
-      }
-    }
-    node_mode = false;
-    subscribeChannels();
-    nodeStatusfunc();
     ESP.wdtFeed();
+    WiFiConnect();
   }
 }
-void MQTTConnect() {
-  if (WiFi.status() == WL_CONNECTED && !client.connected()) {
-    //node_mode = true;
-    while (!client.connected()) {
-      ledBlink(ST_CONNECT_MQTT);
-      client.connect("Test Node 1", mqttUsername, mqttPassword);
-      ESP.wdtFeed();
-      timeout2--;
-      if (WiFi.status() != WL_CONNECTED) {
-        WiFiReconnect();
-      }
-      if (timeout2 < 0) {
-        //ESP.restart();
-      }
-    }
-    node_mode = false;
-    subscribeChannels();
-    nodeStatusfunc();
-    ESP.wdtFeed();
-  }
-}
+
+
+
 
 void ledBlink(int time) {
+  //digitalWrite(STLED, HIGH);
+  //delay(time);
   digitalWrite(STLED, LOW);
   delay(time);
   digitalWrite(STLED, HIGH);
-  delay(time);
+  //delay(time);
 }
