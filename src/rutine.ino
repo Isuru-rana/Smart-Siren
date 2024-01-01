@@ -13,7 +13,7 @@ void sirenOfftime() {
 
   Timer2.detach();
 
-  if (node_state == false) {
+  if (node_mode == false) {
     client.publish(SirenTopic_send, "0");
   }
 }
@@ -21,7 +21,7 @@ void sirenOfftime() {
 void notRespond() {
   // set siren into indipendent mode and reset timer settied from timer1 interrupt
   if (node_system_state == true) {
-    node_state = true;
+    node_mode = true;
     //statusTimer = 0;
     //statusTimer = millis();
     client.subscribe(check_connection_rec);

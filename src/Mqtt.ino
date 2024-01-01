@@ -15,8 +15,8 @@ void callBack(char* topic, byte* payload, unsigned int length) {
     if (payloadStr.equals("online")) {
       Timer3.detach();
       if (autoTrigger_state == false) {
-        if (node_state) {  // set node state to HA mode again if on Indipendent mode
-          node_state = false;
+        if (node_mode) {  // set node state to HA mode again if on Indipendent mode
+          node_mode = false;
           if (EEPROM.read(debug_mode_Address)) {
             client.publish("testing code", "response recived. turning off indipendent mode");
           }
@@ -95,14 +95,14 @@ void callBack(char* topic, byte* payload, unsigned int length) {
 
   if (topicStr.equals(nodeStateSetManual_Listn)) {  //  set/floor3/LR/node/mode
     if (payloadStr.equals("Turn ON")) {
-      //node_state = true;
+      //node_mode = true;
       autoTrigger_state = true;
       client.publish(nodeStateSetManual_sta, "AutoTrigger, ON!");
       if (EEPROM.read(debug_mode_Address)) {
         client.publish("testing code", "Siren state set to on done!");
       }
     } else if (payloadStr.equals("Turn OFF")) {
-      //node_state = false;
+      //node_mode = false;
       autoTrigger_state = false;
       client.publish(nodeStateSetManual_sta, "AutoTrigger, OFF!");
       if (EEPROM.read(debug_mode_Address)) {

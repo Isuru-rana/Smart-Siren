@@ -17,7 +17,7 @@ void reconnect() {
 void WiFiReconnect() {
   if (WiFi.status() != WL_CONNECTED) {
     
-      node_state = true;  // setting to independent mode
+      node_mode = true;  // setting to independent mode
     
     while (WiFi.status() != WL_CONNECTED && timeout > 0) {
       ledBlink(ST_CONNECT_WiFi);
@@ -33,7 +33,7 @@ void WiFiReconnect() {
 
 void MQTTReconnect() {
   if (WiFi.status() == WL_CONNECTED && !client.connected()) {
-    node_state = true;
+    node_mode = true;
     while (!client.connected()) {
       ledBlink(ST_CONNECT_MQTT);
       client.connect("Test Node 1", mqttUsername, mqttPassword);
@@ -46,7 +46,7 @@ void MQTTReconnect() {
         //ESP.restart();
       }
     }
-    node_state = false;
+    node_mode = false;
     subscribeChannels();
     nodeStatusfunc();
     ESP.wdtFeed();
@@ -54,7 +54,7 @@ void MQTTReconnect() {
 }
 void MQTTConnect() {
   if (WiFi.status() == WL_CONNECTED && !client.connected()) {
-    //node_state = true;
+    //node_mode = true;
     while (!client.connected()) {
       ledBlink(ST_CONNECT_MQTT);
       client.connect("Test Node 1", mqttUsername, mqttPassword);
@@ -67,7 +67,7 @@ void MQTTConnect() {
         //ESP.restart();
       }
     }
-    node_state = false;
+    node_mode = false;
     subscribeChannels();
     nodeStatusfunc();
     ESP.wdtFeed();

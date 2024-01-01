@@ -4,12 +4,12 @@ void motionDetect() {
     client.publish("testing code", "Hardware Interrupt happens");
   }
 
-  if (node_state == false) {
+  if (node_mode == false) {
     //client.publish("testing code", "Hardware Interrupt goes to HA mode signal send");
     client.publish(motionDetect_send, "True");
   }
 
-  if (node_state == true || autoTrigger_state == true) {
+  if (node_mode == true || autoTrigger_state == true) {
     if (EEPROM.read(debug_mode_Address)) {
       client.publish("testing code", "Hardware Interrupt goes to Indipendent mode siren on");
     }

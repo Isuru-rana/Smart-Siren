@@ -1,4 +1,4 @@
-/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.5 ========================
+/* ========= Siren + PIR + MQTT node ESP01S stable v.2.2.7 ========================
 This code is developed for a node device in a home automation system running on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
@@ -54,15 +54,20 @@ v.2.2.3 - 2023/10/10 - improvements:
     Trigger Modes are added to EEPROM.
     Added Startup message.
 
-v.2.2.4 - 2023/10/11 - features added: 
+v.2.2.4 - 2023/10/11 - feature added: 
     Siren On/off status values added.
     Debug mode flag added.
 
-v.2.2.5 - 2023/10/11 - features added: 
+v.2.2.5 - 2023/10/11 - feature added: 
     Auto trigger siren sync messages added.
     MQTT reconnecting reboot added.
     Bugs Fixed: 
         Deactivating autotrigger mode issue fixed.
+
+v.2.2.6 - Description Missing
+
+v.2.2.7 - 2023/10/17 - Description Missing
+
 */
 
 
@@ -74,8 +79,8 @@ v.2.2.5 - 2023/10/11 - features added:
 
 #define System_state_First_boot_Address 0
 #define System_state_Address 1
-#define debug_mode_Address 2
-#define System_mode_Address 3
+#define System_autoTrigger_Address 2
+#define debug_mode_Address 3
 #define System_delay_Address 4
 
 #define siren 0
@@ -87,8 +92,6 @@ const int PIR = 1;
  *  data - data transfer
  *  set - configurable inputs
  *  sta - status indicators 
- * 
- * 
  */
 #define SirenTopic_listn "cmd/floor3/LR/node/siren"
 #define SirenTopic_send "sta/floor3/LR/node/siren"
@@ -111,14 +114,14 @@ const int PIR = 1;
 #define check_connection_rec_payload "online"
 
 #define motionDetect_send "sta/floor3/LR/node/PIR"
-
 #define startUp_message "sta/floor3/LR/node/start"
 
-//RF data transmit 
+//RF data transmit
 #define RFRecivedData_send "data/floor3/LR/node/RF"
 
 #define ST_CONNECT_WiFi 100
 #define ST_CONNECT_MQTT 200
+#define WiFi_LED_pattern_timeout 30
 
 int Siren_on_time_in_sec = 600;  //10 mins = 600 [value is in secs.]
 
@@ -130,9 +133,9 @@ const int mqttPort = 1883;
 const char* mqttUsername = "mqtt-home";
 const char* mqttPassword = "Iamironman";
 
-bool node_state = false;        // false == HA conected Mode || true == Indipendent mode
-bool autoTrigger_state = false; // false == Auto trigger Off manually ||  true == Auto Trigger On 
-bool node_system_state;  // false == Systen turn off || true == System turn ON
+bool node_mode = false;  // false == HA conected Mode || true == Indipendent mode
+bool autoTrigger_state;  // false == Auto trigger Off manually ||  true == Auto Trigger On
+bool node_system_state;  // false == System turn off || true == System turn ON
 bool debug_mode_state = false;
 bool startUp_flag = true;
 
@@ -142,13 +145,13 @@ bool flag1 = false;  //added this bool to stop execuding "noResponse()" function
 
 const int timeoutT = 5;  //after sending status msg, timeout timer to recive HA state 5 == 5sec
 
-//bool debug_mode = false;
+
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 RCSwitch rfReciver = RCSwitch();
 
-Ticker Timer1;  // Timer for ststus checking
+Ticker Timer1;  // Timer for status checking
 Ticker Timer2;  // Timer for Siren on time
 Ticker Timer3;  // Timer to check status msg recived
 
@@ -160,51 +163,61 @@ void setup() {
 
   // get value for the state of the system from EEPROM and store it in system state bool
   if (EEPROM.read(System_state_First_boot_Address) == 1) {  // Check if this is the first boot
-    node_system_state = EEPROM.read(System_state_Address);  // If this is first boot
-    node_state = EEPROM.read(System_mode_Address);  // Auto trigger mode set
-    EEPROM.get(System_delay_Address,Siren_on_time_in_sec);
-  } else {
-    EEPROM.write(System_state_Address, 1);
+    // If this is not the first boot
+    node_system_state = EEPROM.read(System_state_Address);        // get previous system state (On or off)
+    autoTrigger_state = EEPROM.read(System_autoTrigger_Address);  // get previous Auto trigger mode
+    EEPROM.get(System_delay_Address, Siren_on_time_in_sec);       // get last delay input
+  }
+
+  else {
+    //if this is the first boot
+    EEPROM.write(System_state_First_boot_Address, 1);  //set node as not the first boot
     EEPROM.commit();
-    EEPROM.write(System_state_First_boot_Address, 1);  //setting unit as not the first boot
+    EEPROM.write(System_state_Address, 1);  // set system as turn on mode
     EEPROM.commit();
-    EEPROM.write(debug_mode_Address, 0);
+    EEPROM.write(System_autoTrigger_Address, 0);  // set autotrigger mode as off
     EEPROM.commit();
-    EEPROM.put(System_delay_Address, 600); // default delay set to 10 mins(600 sec)
+    EEPROM.put(System_delay_Address, 600);  // set default delay to 10 mins(600 sec)
     EEPROM.commit();
-    EEPROM.write(System_mode_Address, 0);
+    EEPROM.write(debug_mode_Address, 0);  // set debug mode as off
+    EEPROM.commit();
+
+    // sync written values to RAM variables
     Siren_on_time_in_sec = EEPROM.read(System_delay_Address);
     node_system_state = EEPROM.read(System_state_Address);
-    node_state = EEPROM.read(System_mode_Address);
+    autoTrigger_state = EEPROM.read(System_autoTrigger_Address);
   }
 
   //Serial.begin(115200);
   pinMode(siren, OUTPUT);
   pinMode(STLED, OUTPUT);
   pinMode(PIR, INPUT);
-  rfReciver.enableReceive(RFIN);
 
-  attachInterrupt(PIR, motionDetect, FALLING);  // connect PIR as a hardwear interrupt
+  rfReciver.enableReceive(RFIN);
 
   Timer1.attach(30, nodeStatusfunc);
 
   ESP.wdtDisable();
   ESP.wdtEnable(WDTO_1S);  // Enabaling Watchdog timer for 1 sec.
 
+  attachInterrupt(PIR, motionDetect, FALLING);  // connect PIR as a hardware interrupt
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
-    ledBlink(ST_CONNECT_WiFi);
+    WiFi_LED_pattern_timeout--;
+    if (WiFi_LED_pattern_timeout < 0) {
+      ledBlink(ST_CONNECT_WiFi);
+    }
+    ESP.wdtFeed();
   }
-  //Serial.println();
-  //Serial.printf("WiFi Connected: %s\n", ssid);
 
   client.setServer(mqttServer, mqttPort);
   client.setCallback(callBack);
 
   client.connect("Floor3 Node", mqttUsername, mqttPassword);
-/*
+  /*
   while (!client.connected()) {
     ledBlink(ST_CONNECT_MQTT);
   }
@@ -217,7 +230,7 @@ void setup() {
     client.publish("testing code", "passed Setup");
   }
 
-  client.publish(startUp_message,"");
+  client.publish(startUp_message, "");
   nodeStatusfunc();
 }
 

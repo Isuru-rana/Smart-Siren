@@ -14,7 +14,7 @@ void nodeStatusfunc() {
   Timer3.attach(timeoutT, notRespond);
 
   // subscribing to recive massage again for dobble check
-  if (node_state == false) {
+  if (node_mode == false) {
     client.subscribe(check_connection_rec);
   }
   // reciveing and checking is on mqtt call back section
