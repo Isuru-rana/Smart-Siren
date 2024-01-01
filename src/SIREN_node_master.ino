@@ -1,18 +1,28 @@
-/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2 =========
-This code is developed for a node device for a home automation system that runs on Home Assistant OS.
+/* ========= Siren + PIR + MQTT node ESP01S stable v.2.1.0===================================
+This code is developed for a node device in a home automation system that runs on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
 
-In "Slave Mode," the node works as an MQTT client and sends PIR sensor values to the MQTT broker.
-The Siren is in sleep mode until the broker sends a message to control the siren.
+In "Slave Mode," the node works as an MQTT client, sending PIR sensor values to the MQTT broker.
+The Siren remains in sleep mode until the broker sends a message to control the siren.
 
 In "Independent Mode," the Siren works with the PIR, automatically turning on for 10 minutes before going to sleep.
-Independent Mode will persist until the MQTT broker connection is restored.
+Independent Mode will stay active until the MQTT broker connection is reestablished.
 
 Updates
-v.2 - included RF receiver
-*/
+v2 - included RF reciver
+v2.1.0 - 2023/10/02 - function added: Set the node to independent mode via MQTT
+                                      Send independent mode status with MQTT request
+                      In this update,
+                      1. Users can manually set the node into independent mode, triggering
+                      the siren automatically with motion while sending an MQTT message to the MQTT broker.
+                      Activated siren can deactivate with MQTT.
+                      2. User can ask for the indipendent mode status from the node, replying with the same topic
+                      to the broker.
 
+                      bugs fixed: Struck while connecting to MQTT broker if WiFi disconnected bug fixed.
+
+*/
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
@@ -28,6 +38,8 @@ const int PIR = 0;
 #define SirenTopic_listn "cmd/floor3/LR/node/siren"
 #define motionDetect_send "sta/floor3/LR/node/PIR"
 #define RFRecivedData_send "sta/floor3/LR/node/RF"
+#define nodeStateSetManual_Listn "cmd/floor3/LR/node/mode"
+#define nodeStateSetManual_sta "sta/floor3/LR/node/mode"
 
 #define check_connection_send "sta/floor3/LR/node/cnt"
 

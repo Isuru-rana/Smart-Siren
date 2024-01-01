@@ -37,5 +37,19 @@ void callBack(char* topic, byte* payload, unsigned int length) {
       Timer2.detach();
       client.publish("testing code", "Siren Turn Off with manual mqtt");
     }
+  } else if (topicStr.equals(nodeStateSetManual_Listn)) {
+    if (payloadStr.equals("on")) {
+      node_state == true;
+      client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
+    } else if (payloadStr.equals("off")) {
+      node_state == false;
+      client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
+    }
+  } else if (topicStr.equals(nodeStateSetManual_sta)) {
+    if (node_state == true) {
+      client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
+    } else if (node_state == false) {
+      client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
+    }
   }
 }

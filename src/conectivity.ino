@@ -31,7 +31,7 @@ void reconnect() {
 
   if (WiFi.status() == WL_CONNECTED && !client.connected()) {
     //Serial.println("Mqtt Server disconnected");
-    while (!client.connected()) {
+    while (!client.connected() && WiFi.status() == WL_CONNECTED) {
       ledBlink(ST_CONNECT_MQTT);
       client.connect("Test Node 1", mqttUsername, mqttPassword);
       ESP.wdtFeed();
