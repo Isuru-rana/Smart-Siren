@@ -1,4 +1,4 @@
-/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.4 ========================
+/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.2.5 ========================
 This code is developed for a node device in a home automation system that runs on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
@@ -45,7 +45,7 @@ v.2.2.1 - 2023/10/06 - debug/feature added:
 
 v.2.2.2 - 2023/10/08 - bugs fixed: 
     Siren pin changed due to RX pin startup signals.
-    Modified the code for MQTT reconnecting due to being stuck at connecting.
+    Modified the code for MQTT reconnecting due to being struck at connecting.
     WiFi and MQTT reconnection functions divided into two separate functions.
 
 v.2.2.3 - 2023/10/10 - improvements: 
@@ -54,8 +54,15 @@ v.2.2.3 - 2023/10/10 - improvements:
     Trigger Modes are added to EEPROM.
     Added Startup message.
 
-v.2.2.4 - 2023/10/11 - feature added: 
+v.2.2.4 - 2023/10/11 - features added: 
     Siren On/off status values added.
+    Debug mode flag added.
+
+v.2.2.5 - 2023/10/11 - features added: 
+    Auto trigger siren sync messages added.
+    MQTT reconnecting reboot added.
+    Bugs fixed: 
+        Deactivating autotrigger mode issue fixed.
 */
 
 
@@ -124,8 +131,10 @@ const char* mqttUsername = "mqtt-home";
 const char* mqttPassword = "Iamironman";
 
 bool node_state = false;        // false == HA conected Mode || true == Indipendent mode
-bool node_system_state = true;  // false == Auto indipendent Stop || true == Auto independant On
+bool autoTrigger_state = false; // false == Auto trigger Off manually ||  true == Auto Trigger On 
+bool node_system_state = true;  // false == Systen turn off || true == System turn ON
 bool debug_mode_state = false;
+bool startUp_flag = true;
 
 bool SirenON_OFF = false;  // Is siren on or off
 
@@ -195,10 +204,12 @@ void setup() {
   client.setCallback(callBack);
 
   client.connect("Floor3 Node", mqttUsername, mqttPassword);
-
+/*
   while (!client.connected()) {
     ledBlink(ST_CONNECT_MQTT);
   }
+  */
+  MQTTConnect();
   //Serial.println("Connected to MQTT server");
   subscribeChannels();
 
@@ -207,6 +218,7 @@ void setup() {
   }
 
   client.publish(startUp_message,"");
+  nodeStatusfunc();
 }
 
 bool temp1 = false;

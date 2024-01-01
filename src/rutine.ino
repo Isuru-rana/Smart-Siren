@@ -9,6 +9,7 @@ void sirenOfftime() {
 
   digitalWrite(siren, LOW);
   SirenON_OFF = false;
+  client.publish(SirenTopic_send, "Siren, OFF");
 
   Timer2.detach();
 
