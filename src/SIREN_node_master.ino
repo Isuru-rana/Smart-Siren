@@ -1,4 +1,4 @@
-/* ========= Siren + PIR + MQTT node ESP01S stable v.2.1.0===================================
+/* ========= Siren + PIR + MQTT Node ESP01S Stable v.2.1.0 ========================
 This code is developed for a node device in a home automation system that runs on Home Assistant OS.
 This node will manage an MQTT 3.1.1 client, a Siren device, and a PIR sensor.
 The node has two different profiles called "Slave Mode" and "Independent Mode."
@@ -10,19 +10,26 @@ In "Independent Mode," the Siren works with the PIR, automatically turning on fo
 Independent Mode will stay active until the MQTT broker connection is reestablished.
 
 Updates
-v2 - included RF reciver
-v2.1.0 - 2023/10/02 - function added: Set the node to independent mode via MQTT
-                                      Send independent mode status with MQTT request
-                      In this update,
-                      1. Users can manually set the node into independent mode, triggering
-                      the siren automatically with motion while sending an MQTT message to the MQTT broker.
-                      Activated siren can deactivate with MQTT.
-                      2. User can ask for the indipendent mode status from the node, replying with the same topic
-                      to the broker.
-
-                      bugs fixed: Struck while connecting to MQTT broker if WiFi disconnected bug fixed.
-
+v2 - included RF receiver
+v2.1.0 - 2023/10/02 - functions added: 
+    Set the node to independent mode via MQTT
+    Send independent mode status with MQTT request
+    In this update:
+        1. Users can manually set the node into independent mode, triggering
+           the siren automatically with motion while sending an MQTT message to the MQTT broker.
+           The activated siren can be deactivated with MQTT.
+        2. Users can ask for the independent mode status from the node, replying with the same topic
+           to the broker.
+    Bugs fixed: 
+        Struck while connecting to the MQTT broker if WiFi disconnected bug fixed.
+                      
+v.2.1.1 - 2023/10/02 - modifications: 
+    Fixed siren time changed for a variable that can be set by the user via MQTT.
+    Bugs fixed: 
+        Not responding to the config and state set setting fixed.
+        MQTT stuck loop at WiFi disconnects enhanced.
 */
+
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
@@ -38,8 +45,12 @@ const int PIR = 0;
 #define SirenTopic_listn "cmd/floor3/LR/node/siren"
 #define motionDetect_send "sta/floor3/LR/node/PIR"
 #define RFRecivedData_send "sta/floor3/LR/node/RF"
-#define nodeStateSetManual_Listn "cmd/floor3/LR/node/mode"
+#define nodeStateSetManual_Listn "set/floor3/LR/node/mode"
+#define nodeStateSetSuccess_send "set_ok/floor3/LR/node/mode"
 #define nodeStateSetManual_sta "sta/floor3/LR/node/mode"
+#define nodeOntimeConfig_listn "config/floor3/LR/node/delay"
+#define nodeOntimeConfigSuccess_send "config_ok/floor3/LR/node/delay"
+#define nodeOntimeConfig_sta "sta/floor3/LR/node/delay"
 
 #define check_connection_send "sta/floor3/LR/node/cnt"
 
@@ -48,7 +59,7 @@ const int PIR = 0;
 
 #define ST_CONNECT_WiFi 100
 #define ST_CONNECT_MQTT 200
-#define Siren_on_time_in_sec 60  //10 mins = 600
+int Siren_on_time_in_sec = 600;  //10 mins = 600
 
 const char* ssid = "Home WiFi Network";
 const char* password = "Whoareyou?";
@@ -109,9 +120,8 @@ void setup() {
     ledBlink(ST_CONNECT_MQTT);
   }
   //Serial.println("Connected to MQTT server");
+  subscribeChannels();
 
-  client.subscribe(check_connection_rec);
-  client.subscribe(SirenTopic_listn);
 
   client.publish("testing code", "passed Setup");
 }

@@ -13,10 +13,10 @@ void reconnect() {
       ESP.wdtFeed();
 
       if (timeout < 1) {
-       // Serial.println("  timeout! Retring....");
+        // Serial.println("  timeout! Retring....");
         timeout = 30;
 
-       // Serial.print("WiFi disconnected");
+        // Serial.print("WiFi disconnected");
       }
     }
   }
@@ -36,11 +36,13 @@ void reconnect() {
       client.connect("Test Node 1", mqttUsername, mqttPassword);
       ESP.wdtFeed();
     }
+    if (WiFi.status() != WL_CONNECTED){
+      return;
+    }
 
     //Serial.println("MQTT Server connected!");
     node_state = false;
-    client.subscribe(check_connection_rec);
-    client.subscribe(SirenTopic_listn);
+    subscribeChannels();
     nodeStatusfunc();
     ESP.wdtFeed();
   }

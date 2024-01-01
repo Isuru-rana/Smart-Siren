@@ -40,16 +40,31 @@ void callBack(char* topic, byte* payload, unsigned int length) {
   } else if (topicStr.equals(nodeStateSetManual_Listn)) {
     if (payloadStr.equals("on")) {
       node_state == true;
-      client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
+      client.publish(nodeStateSetSuccess_send, "INDIPENDENT, ON");
     } else if (payloadStr.equals("off")) {
       node_state == false;
-      client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
+      client.publish(nodeStateSetSuccess_send, "INDIPENDENT, OFF");
     }
   } else if (topicStr.equals(nodeStateSetManual_sta)) {
-    if (node_state == true) {
-      client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
-    } else if (node_state == false) {
-      client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
+    if (payloadStr.equals("???")) {
+      if (node_state == true) {
+        client.publish(nodeStateSetManual_sta, "INDIPENDENT, ON");
+      } else if (node_state == false) {
+        client.publish(nodeStateSetManual_sta, "INDIPENDENT, OFF");
+      }
+    }
+  } else if (topicStr.equals(nodeOntimeConfig_listn)) {
+    int commaIndex = payloadStr.indexOf(',');
+    String valStr = payloadStr.substring(commaIndex + 2);
+    Siren_on_time_in_sec = valStr.toInt();
+    String tempPayLoad = "delay Set successful! new delay: ";
+    tempPayLoad += String(Siren_on_time_in_sec);
+    client.publish(nodeOntimeConfigSuccess_send, tempPayLoad.c_str());
+  } else if (topicStr.equals(nodeOntimeConfig_sta)) {
+    if (payloadStr.equals("???")) {
+      String tempPayLoad = "Delay, ";
+      tempPayLoad += String(Siren_on_time_in_sec);
+      client.publish(nodeOntimeConfig_sta, tempPayLoad.c_str());
     }
   }
 }
