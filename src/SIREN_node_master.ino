@@ -138,15 +138,15 @@ const int PIR = 0;
 
 int Siren_on_time_in_sec = 600;  //10 mins = 600 [value is in secs.]
 
-const char* device_name = "IZZO-SN-00001";
+const char* device_name = "Device Name";
 
-const char* ssid = "Home WiFi Network";
-const char* password = "Whoareyou?";
+const char* ssid = "Your WiFi SSID";
+const char* password = "Your WiFi Password";
 
-const char* mqttServer = "192.168.8.119";
+const char* mqttServer = "Your MQTT Broker address";
 const int mqttPort = 1883;
-const char* mqttUsername = "mqtt-home";
-const char* mqttPassword = "Iamironman";
+const char* mqttUsername = "Your MQTT username";
+const char* mqttPassword = "Your MQTT Password";
 
 bool node_mode = false;  // false == HA conected Mode || true == Indipendent mode
 bool autoTrigger_state = false;  // false == Auto trigger Off manually ||  true == Auto Trigger On
